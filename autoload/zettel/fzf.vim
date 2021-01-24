@@ -43,14 +43,15 @@ function! zettel#fzf#execute_fzf(a, b, options)
   if g:zettel_fzf_command == "ag"
     let search_ext = "--" . substitute(vimwiki#vars#get_wikilocal('ext'), '\.', '', '')
     let query =  empty(a:a) ? '^(?=.)' : a:a
-    let l:fzf_command = g:zettel_fzf_command . ' --color --smart-case --nogroup --column ' . shellescape(query)  " --ignore-case --smart-case
+    let options_ag =  empty(a:b) ? '' : a:b
+    let l:fzf_command = g:zettel_fzf_command . ' ' . search_ext . ' ' . options_ag . ' --color --smart-case --nogroup --column ' . shellescape(query)   " --ignore-case --smart-case
   else
     " use grep method for other commands
     let search_ext = "*" . vimwiki#vars#get_wikilocal('ext')
-    let l:fzf_command = g:zettel_fzf_command . " " . shellescape(a:a)
+    let l:fzf_command = g:zettel_fzf_command . " " . shellescape(a:a) . ' ' . search_ext
   endif
 
-  return fzf#vim#grep(l:fzf_command . ' ' . search_ext, 1, fzf#vim#with_preview(a:options), l:fullscreen)
+  return fzf#vim#grep(l:fzf_command, 1, fzf#vim#with_preview(a:options), l:fullscreen)
 endfunction
 
 
