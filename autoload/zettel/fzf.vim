@@ -27,6 +27,14 @@ function! s:get_fzf_filename(line)
   return filename
 endfunction
 
+function! s:get_fzf_line_number(line)
+  " line is in the following format:
+  " filename:linenumber:columnnumber:matched_text
+  " remove spurious text from the line to get just the filename
+  let line_number = split(a:line, ":")[1]
+  return line_number
+endfunction
+
 " get clean wiki name from a filename
 function! s:get_wiki_file(filename)
    let fileparts = split(a:filename, '\V.')
@@ -77,6 +85,7 @@ endfunction
 
 " search for a note and the open it in Vimwiki
 function! zettel#fzf#search_open(line,...)
+  let l:line_number = s:get_fzf_line_number(a:line)
   let filename = s:get_fzf_filename(a:line)
   let wikiname = s:get_wiki_file(filename)
   if !empty(wikiname)
@@ -87,7 +96,7 @@ function! zettel#fzf#search_open(line,...)
     echom("[DEBUG] wikiname: " . wikiname)
     echom("[DEBUG] dir: " . g:zettel_dir)
     echom("[DEBUG] wikidir: " . vimwiki#vars#get_wikilocal('path'))
-    call vimwiki#base#open_link(':e ', wikiname)
+    call vimwiki#base#open_link(':e +' . l:line_number . ' ' , wikiname)
   endif
 endfunction
 
