@@ -120,21 +120,22 @@ function! zettel#fzf#sink_onefile(params, sink_function,...)
   " get optional argument that should contain additional options for the fzf
   " preview window
   let additional_options = get(a:, 1, {})
-  call zettel#fzf#execute_fzf(a:params, 
+  call zettel#fzf#execute_fzf(a:params,
       \'--skip-vcs-ignores', fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)))
 endfunction
+
 
 " open wiki page using FZF search
 function! zettel#fzf#execute_open(params)
   call zettel#fzf#sink_onefile(a:params, 'zettel#fzf#search_open')
 endfunction
 
-" return list of unique wiki pages selected in FZF 
+" return list of unique wiki pages selected in FZF
 function! zettel#fzf#get_files(lines)
   " remove duplicate lines
-  let new_list = [] 
+  let new_list = []
   for line in a:lines
-    if line !="" 
+    if line !=""
       let new_list = add(new_list, s:get_fzf_filename(line))
     endif
   endfor
@@ -198,6 +199,110 @@ function! zettel#fzf#insert_note(lines)
   echom("Executing :" .command_to_execute)
   let result = systemlist(command_to_execute, lines_to_convert)
   call append(line("."), result)
-  " Todo: move this to execute_open 
+  " Todo: move this to execute_open
   call setqflist(map(zettel#fzf#get_files(a:lines), '{ "filename": v:val }'))
 endfunction
+
+
+" ------------------------------------------------------------------------
+" TODO kraxli:
+function! zettel#fzf#anchor_query(search_string)
+
+  " let l:tag_pattern_base = '\\H\*\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
+  let l:tag_pattern_base = '\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
+  let l:newline = '\(\?\|\^\|\\h\+\)'
+  let l:newline_or_space = '\[\\h\\n\\r\]\+'
+
+  let l:string2search = empty(a:search_string) ?  l:tag_pattern_base : get(a:, 'search_string',  l:tag_pattern_base)
+  let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
+
+  " TODO kraxli: don't highlight (include in match) # charachter when it is at the beginning of a line
+  let l:query_mkd_tag = l:newline_or_space . '\#\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
+  let l:query_vimwiki_tag = '\[^\(http\)\(s\?\)\]:\\K\[^\\h\\n\\r\]\*'. l:string2search .'\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
+
+  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\[^\\n\\r\]\*\\K' . l:string2search " . '\.\*'  " \(\?\<\=#\)
+  let l:query_mkd_title = l:newline . 'title:\\h\+\\K\\H\*' . l:string2search " . '\\X'
+
+  " TODO kraxli: anker for bold text
+  " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
+  " let l:query_bold = '**\\K\[^\\h\\n\\r\]\*'. l:string2search  .'\\H\*\(\?\=**\)'
+
+  let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header
+  " let l:query = l:query_vimwiki_tag . '\|\(' . l:query_mkd_tag . '\)\|\(' . l:query_mkd_title  . '\)\|\('. l:query_mkd_header . '\)'
+  return l:query
+endfunction
+
+
+" helper function to open FZF preview window and ....
+function! zettel#fzf#anchor_reference(query, sink_function)
+
+  " call zettel#fzf#anchor_reference('vim', 'zettel#fzf#search_open')
+
+  if !executable('ag') || vimwiki#vars#get_wikilocal('syntax') != 'markdown'
+    echomsg('function zettel#fzf#anchor_reference() works on markdown files only and requires silver-searcher (ag)')
+    return
+  endif
+
+  " let additional_options = get(a:, 1, {})
+  let additional_options = {}
+
+  let l:query = zettel#fzf#anchor_query(a:query)
+  " echomsg(l:query)
+
+  let l:fullscreen = 0
+  let l:options_ag = '--md --color --ignore-case ' " --ignore-case --smart-case
+  " https://sourcegraph.com/github.com/junegunn/fzf/-/blob/README-VIM.md
+  let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
+  " , "--preview='bat --color=always --style=header,grid --line-range :300
+  " {}'""
+  " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(l:specs), l:fullscreen)
+  " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(), l:fullscreen)
+  return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)), l:fullscreen)
+
+  " return zettel#fzf#execute_fzf(l:query,
+  "  \'--skip-vcs-ignores', fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)))
+
+endfunction
+
+" function to insert reference (similar to  zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#wiki_search'))
+" (1) provide right search pattern to  zettel#fzf#sink_onefile
+" (2) replace 'zettel#fzf#wiki_search' to output a full anchor and not file
+" name only
+" (3) done
+
+
+" function to open file at reference (similar to zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#search_open'))
+" (1) provide right search pattern to  zettel#fzf#sink_onefile
+" (2) done
+
+" ------------------------------------------------------------------------
+
+  " let l:with_non_vimwiki_tags = get(a:, 'with_non_vimwiki_tags', 0)  " should non-vimwiki-tags be used
+
+  " if l:with_non_vimwiki_tags
+  "   let l:mkdd_tag_prefixes = deepcopy(g:mkdd_tag_prefixes)
+  "   " clean out tags which are not supported
+  "   " let l:mkdd_tag_prefixes= substitute(g:mkdd_tag_prefixes, '+', '', '')
+  "   let l:isin = index(l:mkdd_tag_prefixes, '+')
+  "   if l:isin != -1
+  "     remove(l:mkdd_tag_prefixes, l:isin)
+  "   endif
+  "
+  "   " let l:tag_prefix = join(split(l:mkdd_tag_prefixes, '\zs'), '\|')
+  "   let l:tag_prefix = join(l:mkdd_tag_prefixes, '\|')
+  "   let l:tag_prefix = substitute(l:tag_prefix, '&', '\\&', 'g')
+  "
+  "
+  "   if l:exact
+  "     let l:non_vimwiki_tags = '\|'. l:newline_string .'\('. l:tag_prefix .'\)\\H\*'. l:string2search .'\\H\*'  " \R, problem with new line and space before
+  "   else
+  "     " default:
+  "     let l:non_vimwiki_tags = '\|' . l:newline_string . '\('. l:tag_prefix .'\)'.l:tag_pattern_base  " \*
+  "   endif
+  "
+  " " exclude non vimwiki tag identifiers
+  " else
+  "   let l:non_vimwiki_tags = ''
+  " endif
+
+

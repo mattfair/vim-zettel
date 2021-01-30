@@ -8,7 +8,7 @@ function! s:wiki_yank_name()
   let filename = expand("%")
   let link = zettel#vimwiki#get_link(filename)
   let clipboardtype=&clipboard
-  if clipboardtype=="unnamed"  
+  if clipboardtype=="unnamed"
     let @* = link
   elseif clipboardtype=="unnamedplus"
     let @+ = link
@@ -32,7 +32,7 @@ endfunction
 
 " make fulltext search in all VimWiki files using FZF and insert link to the
 " found file
-" command! -bang -nargs=* ZettelSearch call fzf#vim#ag(<q-args>, 
+" command! -bang -nargs=* ZettelSearch call fzf#vim#ag(<q-args>,
 command! -bang -nargs=* ZettelSearch call zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#wiki_search')
 
 command! -bang -nargs=* ZettelYankName call <sid>wiki_yank_name()
@@ -50,14 +50,16 @@ endif
 
 
 nnoremap <silent> <Plug>ZettelSearchMap :ZettelSearch<cr>
-nnoremap <silent> <Plug>ZettelYankNameMap :ZettelYankName<cr> 
-nnoremap <silent> <Plug>ZettelReplaceFileWithLink :call <sid>replace_file_with_link()<cr> 
+nnoremap <silent> <Plug>ZettelYankNameMap :ZettelYankName<cr>
+nnoremap <silent> <Plug>ZettelReplaceFileWithLink :call <sid>replace_file_with_link()<cr>
 xnoremap <silent> <Plug>ZettelNewSelectedMap :call zettel#vimwiki#zettel_new_selected()<CR>
+nnoremap <silent> <Plug>ZettelAnchor :call zettel#fzf#anchor_reference(<q-args>)<cr>
 
 
 if g:zettel_default_mappings==1
   " inoremap [[ [[<esc>:ZettelSearch<CR>
   imap <silent> [[ [[<esc><Plug>ZettelSearchMap
+  imap <silent> ]a <esc><Plug>ZettelAnchor
   nmap T <Plug>ZettelYankNameMap
   " xnoremap z :call zettel#vimwiki#zettel_new_selected()<CR>
   xmap z <Plug>ZettelNewSelectedMap
