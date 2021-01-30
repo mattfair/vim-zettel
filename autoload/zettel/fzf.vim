@@ -234,9 +234,9 @@ endfunction
 
 
 " helper function to open FZF preview window and ....
-function! zettel#fzf#anchor_reference(query, sink_function)
+function! zettel#fzf#anchor_reference(query, sink_function, bang)
 
-  " call zettel#fzf#anchor_reference('vim', 'zettel#fzf#search_open')
+  " call zettel#fzf#anchor_reference('vim', 'zettel#fzf#search_open', <bang>0)
 
   if !executable('ag') || vimwiki#vars#get_wikilocal('syntax') != 'markdown'
     echomsg('function zettel#fzf#anchor_reference() works on markdown files only and requires silver-searcher (ag)')
@@ -249,7 +249,7 @@ function! zettel#fzf#anchor_reference(query, sink_function)
   let l:query = zettel#fzf#anchor_query(a:query)
   " echomsg(l:query)
 
-  let l:fullscreen = 0
+  let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
   let l:options_ag = '--md --color --ignore-case ' " --ignore-case --smart-case
   " https://sourcegraph.com/github.com/junegunn/fzf/-/blob/README-VIM.md
   let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
