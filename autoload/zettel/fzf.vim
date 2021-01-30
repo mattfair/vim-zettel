@@ -209,8 +209,7 @@ endfunction
 function! zettel#fzf#anchor_query(search_string)
 
   " let l:tag_pattern_base = '\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
-  let l:tag_pattern_base = '\(\?\=\.\)'  " '\\H\{2,\}'
-  " let query = empty(a:query) ? '^(?=.)' : a:query
+  let l:tag_pattern_base = '\.'  " '\\H\{2,\}'
   let l:newline = '\(\?\|\^\|\\h\+\)'
   let l:newline_or_space = '\[\\h\\n\\r\]\+'
 
@@ -221,10 +220,11 @@ function! zettel#fzf#anchor_query(search_string)
   " TODO kraxli: markdown tags
   " let l:query_mkd_tag = l:newline_or_space . '\#\[^\#\]\+\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
 
-  let l:query_vimwiki_tag = '\[^\(http\)\(s\?\)\]:\\K\[^\\h\\n\\r\]\*'. l:string2search .  '\[^\\h\\n\\r\]\*\(\?\=:\)'
+  let l:query_vimwiki_tag = '\(\?\|\[^\(http\)\(s\?\)\]\|\[^\\H\\n\\r\]\):\\K\(\?\|\[^\\h\\n\\r\]\+\|\\H\+\)'. l:string2search .  '\[^\\h\\n\\r\]\*\(\?\=:\)'
   " '\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
 
-  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\[^\\n\\r\]\*\\K' . l:string2search " . '\.\*'  " \(\?\<\=#\)
+  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search  " . '\[^\\n\\r\]\*'
+  " '\.\*'  " \(\?\<\=#\)
   let l:query_mkd_title = l:newline . 'title:\\h\+\\K\\H\*' . l:string2search . '\.\*' " '\\X'
 
   " TODO kraxli: anker for bold text
@@ -254,7 +254,7 @@ function! zettel#fzf#anchor_reference(query, sink_function, bang)
   " echomsg(l:query)
 
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
-  let l:options_ag = '--md --color --ignore-case --no-group ' " --ignore-case --smart-case
+  let l:options_ag = '--md --color --ignore-case ' " --ignore-case --smart-case --no-group
   " https://sourcegraph.com/github.com/junegunn/fzf/-/blob/README-VIM.md
   let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
   " , "--preview='bat --color=always --style=header,grid --line-range :300
