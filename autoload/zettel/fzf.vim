@@ -208,8 +208,9 @@ endfunction
 " TODO kraxli:
 function! zettel#fzf#anchor_query(search_string)
 
-  " let l:tag_pattern_base = '\\H\*\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
-  let l:tag_pattern_base = '\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
+  " let l:tag_pattern_base = '\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
+  let l:tag_pattern_base = '\(\?\=\.\)'  " '\\H\{2,\}'
+  " let query = empty(a:query) ? '^(?=.)' : a:query
   let l:newline = '\(\?\|\^\|\\h\+\)'
   let l:newline_or_space = '\[\\h\\n\\r\]\+'
 
@@ -217,17 +218,20 @@ function! zettel#fzf#anchor_query(search_string)
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
 
   " TODO kraxli: don't highlight (include in match) # charachter when it is at the beginning of a line
-  let l:query_mkd_tag = l:newline_or_space . '\#\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
-  let l:query_vimwiki_tag = '\[^\(http\)\(s\?\)\]:\\K\[^\\h\\n\\r\]\*'. l:string2search .'\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
+  " TODO kraxli: markdown tags
+  " let l:query_mkd_tag = l:newline_or_space . '\#\[^\#\]\+\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
+
+  let l:query_vimwiki_tag = '\[^\(http\)\(s\?\)\]:\\K\[^\\h\\n\\r\]\*'. l:string2search .  '\[^\\h\\n\\r\]\*\(\?\=:\)'
+  " '\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
 
   let l:query_mkd_header = l:newline_or_space . '\#\\h\+\[^\\n\\r\]\*\\K' . l:string2search " . '\.\*'  " \(\?\<\=#\)
-  let l:query_mkd_title = l:newline . 'title:\\h\+\\K\\H\*' . l:string2search " . '\\X'
+  let l:query_mkd_title = l:newline . 'title:\\h\+\\K\\H\*' . l:string2search . '\.\*' " '\\X'
 
   " TODO kraxli: anker for bold text
   " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
   " let l:query_bold = '**\\K\[^\\h\\n\\r\]\*'. l:string2search  .'\\H\*\(\?\=**\)'
 
-  let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header
+  let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header
   " let l:query = l:query_vimwiki_tag . '\|\(' . l:query_mkd_tag . '\)\|\(' . l:query_mkd_title  . '\)\|\('. l:query_mkd_header . '\)'
   return l:query
 endfunction
@@ -250,19 +254,83 @@ function! zettel#fzf#anchor_reference(query, sink_function, bang)
   " echomsg(l:query)
 
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
-  let l:options_ag = '--md --color --ignore-case ' " --ignore-case --smart-case
+  let l:options_ag = '--md --color --ignore-case --no-group ' " --ignore-case --smart-case
   " https://sourcegraph.com/github.com/junegunn/fzf/-/blob/README-VIM.md
   let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
   " , "--preview='bat --color=always --style=header,grid --line-range :300
   " {}'""
+
   " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(l:specs), l:fullscreen)
   " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(), l:fullscreen)
   return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)), l:fullscreen)
 
   " return zettel#fzf#execute_fzf(l:query,
   "  \'--skip-vcs-ignores', fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)))
-
 endfunction
+
+
+function! zettel#fzf#anchor_reducer(line)
+    let pattern2disp = a:line
+    let file_ext = vimwiki#vars#get_wikilocal('ext')
+    " CHECK: needs to include the dot: e.g. '.md'
+
+    " TODO: search for headers, tags, titles and replace accordingly
+    let pattern2disp = substitute(substitute(pattern2disp, file_ext . ':\d\+:', '', ''), ' ', '', '')
+
+    " headers
+    let pattern2disp = substitute(pattern2disp, '#\+', '#', '')
+    " title
+    let pattern2disp = substitute(pattern2disp, 'title:.*', '', '')
+    " tags
+    let pattern2disp = <SID>tag_reducer(pattern2disp)
+    " bold
+    " TODO
+
+    return pattern2disp
+endfunction
+
+
+function! s:tag_reducer(line)
+    let pattern2disp = a:line
+
+    " vimwiki tags
+    let pattern2disp = substitute(pattern2disp, '.*:\(\S\+\):.*', '#\1', '')
+
+    " other tags
+    let pattern2disp = substitute(pattern2disp, '.*#\(\S\+\).*', '#\1', '')
+    " let pattern2disp = substitute(pattern2disp, '.*&&\(\S\+\).*', '#\1', '')
+    " let pattern2disp = substitute(pattern2disp, '.*!\(\S\+\).*', '#\1', '')
+
+    return pattern2disp
+endfunction
+
+" function('zettel#fzf#anchor_reference' , 'query, sink_function, bang')
+
+" function! s:reduce_line(lines)
+"   return join(split(a:lines[0], '\t\zs')[3:], '')
+" endfunction
+" 
+" 
+" function! fzf#vim#complete#line(...)
+"   let [display_bufnames, lines] = fzf#vim#_lines(0)
+"   let nth = display_bufnames ? 4 : 3
+"   return fzf#vim#complete(s:extend({
+"  \ 'prefix':  '^.*$',
+"  \ 'source':  lines,
+"  \ 'options': '--tiebreak=index --ansi --nth '.nth.'.. --tabstop=1',
+"  \ 'reducer': s:function('s:reduce_line')}, get(a:000, 0, fzf#wrap())))
+" endfunction
+" 
+" 
+
+" <plug>(fzf-complete-line)
+" imap <c-x><c-l> <plug>(fzf-complete-line)
+
+"  TODO: how to treat <expr> as input??
+" au FileType markdown,vimwiki inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': "ag '\(\(\(^\h*#+\)\\h+\[^#\]\)\|\(title:.*\)\|\(.*:\\H+:.*\)\|\(.*&&\\H+\\h.*\)\|\(.*!\\H+\\h.*\)\)' --md", 'options': ['--layout=default', '--info=inline'], 'prefix': mkdd#get_crusor_expression(), 'reducer': { lines ->  mkdd#references_reducer(lines[0])},}))
+
+" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': "ag '^#\{1,2} \|title:' --md", 'prefix': '^.*$', 'reducer': { lines ->  mkdd#references_reducer(lines[0])},}))
+
 
 " function to insert reference (similar to  zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#wiki_search'))
 " (1) provide right search pattern to  zettel#fzf#sink_onefile
@@ -276,33 +344,3 @@ endfunction
 " (2) done
 
 " ------------------------------------------------------------------------
-
-  " let l:with_non_vimwiki_tags = get(a:, 'with_non_vimwiki_tags', 0)  " should non-vimwiki-tags be used
-
-  " if l:with_non_vimwiki_tags
-  "   let l:mkdd_tag_prefixes = deepcopy(g:mkdd_tag_prefixes)
-  "   " clean out tags which are not supported
-  "   " let l:mkdd_tag_prefixes= substitute(g:mkdd_tag_prefixes, '+', '', '')
-  "   let l:isin = index(l:mkdd_tag_prefixes, '+')
-  "   if l:isin != -1
-  "     remove(l:mkdd_tag_prefixes, l:isin)
-  "   endif
-  "
-  "   " let l:tag_prefix = join(split(l:mkdd_tag_prefixes, '\zs'), '\|')
-  "   let l:tag_prefix = join(l:mkdd_tag_prefixes, '\|')
-  "   let l:tag_prefix = substitute(l:tag_prefix, '&', '\\&', 'g')
-  "
-  "
-  "   if l:exact
-  "     let l:non_vimwiki_tags = '\|'. l:newline_string .'\('. l:tag_prefix .'\)\\H\*'. l:string2search .'\\H\*'  " \R, problem with new line and space before
-  "   else
-  "     " default:
-  "     let l:non_vimwiki_tags = '\|' . l:newline_string . '\('. l:tag_prefix .'\)'.l:tag_pattern_base  " \*
-  "   endif
-  "
-  " " exclude non vimwiki tag identifiers
-  " else
-  "   let l:non_vimwiki_tags = ''
-  " endif
-
-
