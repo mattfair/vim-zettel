@@ -272,7 +272,8 @@ endfunction
 " sanitize title for filename
 function! zettel#vimwiki#escape_filename(name)
   let name = substitute(a:name, "[%.%,%?%!%:]", "", "g") " remove unwanted characters
-  let schar = vimwiki#vars#get_wikilocal('links_space_char') " ' ' by default
+  " TODO kraxli: s:vimwiki_dir.idx
+  let schar = vimwiki#vars#get_wikilocal('links_space_char', s:vimwiki_dir.idx) " ' ' by default
   let name = substitute(name, " ", schar, "g") " change spaces to link_space_char
 
   let name = tolower(name)
