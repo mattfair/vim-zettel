@@ -27,3 +27,7 @@ command! -bang -nargs=* ZettelOpen call zettel#fzf#sink_onefile(<q-args>, 'zette
 " crate new zettel using command
 command! -bang -nargs=* ZettelNew call zettel#vimwiki#zettel_new(<q-args>)
 
+" short cuts
+command! -bang -nargs=* ZetN call zettel#vimwiki#zettel_new(<q-args>)
+command! -bang -nargs=* ZetO call zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#search_open')
+
