@@ -56,7 +56,8 @@ xnoremap <silent> <Plug>ZettelNewSelectedMap :call zettel#vimwiki#zettel_new_sel
 nnoremap <silent> <Plug>ZettelAnchor :call zettel#fzf#anchor_reference(<q-args>)<cr>
 
 " Anchor completion in insert mode:
-inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
+" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
+inoremap <expr> <c-r> zettel#fzf#anchor_complete()
 
 if g:zettel_default_mappings==1
   " inoremap [[ [[<esc>:ZettelSearch<CR>

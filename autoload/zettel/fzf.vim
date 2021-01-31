@@ -326,6 +326,11 @@ function! s:tag_reducer(pattern)
 endfunction
 
 
+function! zettel#fzf#anchor_complete()
+  let pattern = ''
+  return fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(pattern), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
+endfunction
+
 "  inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor('')})) " -> works
 " inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}})) " -> works
 
