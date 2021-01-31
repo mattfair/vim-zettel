@@ -209,23 +209,32 @@ endfunction
 function! zettel#fzf#anchor_query(search_string)
 
   " let l:tag_pattern_base = '\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
+  " TODO kraxli: default / base patterns need to be tag, header, title
+  " specific
   let l:tag_pattern_base = '\.'  " '\\H\{2,\}'
+  let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]'
   let l:newline = '\(\?\|\^\|\\h\+\)'
   let l:newline_or_space = '\[\\h\\n\\r\]\+'
 
   let l:string2search = empty(a:search_string) ?  l:tag_pattern_base : get(a:, 'search_string',  l:tag_pattern_base)
+  let l:string2search4tag = empty(a:search_string) ?  l:tag_pattern_base_tag : get(a:, 'search_string',  l:tag_pattern_base_tag)
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
 
   " TODO kraxli: don't highlight (include in match) # charachter when it is at the beginning of a line
   " TODO kraxli: markdown tags
   " let l:query_mkd_tag = l:newline_or_space . '\#\[^\#\]\+\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
 
-  let l:query_vimwiki_tag = '\(\?\|\[^\(http\)\(s\?\)\]\|\[^\\H\\n\\r\]\):\\K\(\?\|\[^\\h\\n\\r\]\+\|\\H\+\)'. l:string2search .  '\[^\\h\\n\\r\]\*\(\?\=:\)'
+  let l:pat_http = '\(http\)\(s\?\)'
+  " TODO kraxli:
+  " - possibly just parse the .vimwiki_tags file: ag --hidden  -G \(.vimwiki_tags$\) test
+  " - multi-match flag/mode: /g
+  let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)' " -> (best?)
+  " let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\(\?\|\[^\\h\\n\\r\]\+\|\\H\*\)'. l:string2search .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\)' " -> ok
   " '\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
 
   let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search  " . '\[^\\n\\r\]\*'
   " '\.\*'  " \(\?\<\=#\)
-  let l:query_mkd_title = l:newline . 'title:\\h\+\\K\\H\*' . l:string2search . '\.\*' " '\\X'
+  let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^\\n\\h\\r\]\*' . l:string2search . '\.\*' " '\\X'
 
   " TODO kraxli: anker for bold text
   " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
@@ -303,6 +312,9 @@ function! s:tag_reducer(line)
 
     return pattern2disp
 endfunction
+
+
+" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': ['a', 'b']})) " -> works
 
 " function('zettel#fzf#anchor_reference' , 'query, sink_function, bang')
 
