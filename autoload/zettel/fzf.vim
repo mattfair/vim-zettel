@@ -199,7 +199,6 @@ function! zettel#fzf#insert_note(lines)
   echom("Executing :" .command_to_execute)
   let result = systemlist(command_to_execute, lines_to_convert)
   call append(line("."), result)
-  " Todo: move this to execute_open
   call setqflist(map(zettel#fzf#get_files(a:lines), '{ "filename": v:val }'))
 endfunction
 
@@ -208,9 +207,7 @@ endfunction
 " TODO kraxli:
 function! zettel#fzf#anchor_query(search_string)
 
-  " let l:tag_pattern_base = '\[A-Za-z0-9-_#~@%\]\{2,\}'  " '\\H\{2,\}'
-  " TODO kraxli: default / base patterns need to be tag, header, title
-  " specific
+  " specific default search-patters for tags and headers & titles
   let l:tag_pattern_base = '\.'  " '\\H\{2,\}'
   let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]'
   let l:newline = '\(\?\|\^\|\\h\+\)'
@@ -220,32 +217,27 @@ function! zettel#fzf#anchor_query(search_string)
   let l:string2search4tag = empty(a:search_string) ?  l:tag_pattern_base_tag : get(a:, 'search_string',  l:tag_pattern_base_tag)
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
 
-  " TODO kraxli: don't highlight (include in match) # charachter when it is at the beginning of a line
   " TODO kraxli: markdown tags
   " let l:query_mkd_tag = l:newline_or_space . '\#\[^\#\]\+\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
 
   let l:pat_http = '\(http\)\(s\?\)'
-  " TODO kraxli:
-  " - possibly just parse the .vimwiki_tags file: ag --hidden  -G \(.vimwiki_tags$\) test
-  " - multi-match flag/mode: /g
-  let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)' " -> (best?)
-  " '\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
+  " should I just parse the .vimwiki_tags file for tags: 'ag --hidden  -G \(.vimwiki_tags$\) pattern'
+  let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)'
 
-  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search  " . '\[^\\n\\r\]\*'
+  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search
   " '\.\*'  " \(\?\<\=#\)
-  let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^\\n\\h\\r\]\*' . l:string2search . '\.\*' " '\\X'
+  let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^\\n\\h\\r\]\*' . l:string2search . '\.\*'
 
   " TODO kraxli: anker for bold text
   " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
   " let l:query_bold = '**\\K\[^\\h\\n\\r\]\*'. l:string2search  .'\\H\*\(\?\=**\)'
 
   let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header
-  " let l:query = l:query_vimwiki_tag . '\|\(' . l:query_mkd_tag . '\)\|\(' . l:query_mkd_title  . '\)\|\('. l:query_mkd_header . '\)'
   return l:query
 endfunction
 
-
-function! zettel#fzf#command_anchor(query)  " call zettel#fzf#anchor_reference('vim', 'zettel#fzf#search_open', <bang>0)
+" helper function to create silversearcher (ag) command for anchors
+function! zettel#fzf#command_anchor(query)
 
   if !executable('ag') || vimwiki#vars#get_wikilocal('syntax') != 'markdown'
     echomsg('function zettel#fzf#anchor_reference() works on markdown files only and requires silver-searcher (ag)')
@@ -258,37 +250,28 @@ function! zettel#fzf#command_anchor(query)  " call zettel#fzf#anchor_reference('
   return 'ag ' . l:options_ag . l:query
 endfunction
 
-" helper function to open FZF preview window and ....
+" helper function to open FZF preview window with anchors
 function! zettel#fzf#anchor_reference(query, sink_function, bang)
 
   " let additional_options = get(a:, 1, {})
   let additional_options = {}
 
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
-  " https://sourcegraph.com/github.com/junegunn/fzf/-/blob/README-VIM.md
   let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
   " , "--preview='bat --color=always --style=header,grid --line-range :300
-  " {}'""
   let l:cmd = zettel#fzf#command_anchor(a:query)
 
   " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(l:specs), l:fullscreen)
-  " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(), l:fullscreen)
   return fzf#vim#grep(l:cmd, 1, fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)), l:fullscreen)
 
-  " return zettel#fzf#execute_fzf(l:query,
-  "  \'--skip-vcs-ignores', fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)))
 endfunction
 
 
 function! zettel#fzf#anchor_reducer(line)
     let pattern2disp = a:line
-    " CHECK: needs to include the dot: e.g. '.md'
-    let file_ext = vimwiki#vars#get_wikilocal('ext')
+    " let file_ext = vimwiki#vars#get_wikilocal('ext')
     let file_name = s:get_fzf_filename(a:line)
-    " TODO get file name (with extendsion) (path?)
 
-    " TODO: search for headers, tags, titles and replace accordingly
-    " let l:line_red = substitute(substitute(pattern2disp, file_name . ':\d\+:\d\+:', '', ''), ' ', '', '')
     let l:line_red = substitute(pattern2disp, file_name . ':\d\+:\d\+:', '', '')
     let g:line_red = l:line_red
 
@@ -345,55 +328,3 @@ function! zettel#fzf#anchor_insert(line,...)
   call feedkeys("a", "n")
 endfunction
 
-
-"  inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor('')})) " -> works
-" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}})) " -> works
-
-"  inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}})) " -> does someting
-
-
-" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': ['a', 'b']})) " -> works
-" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': function(zettel#fzf#command_anchor)}))
-" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(<expr>))}))
-
-
-" function('zettel#fzf#anchor_reference' , 'query, sink_function, bang')
-
-" function! s:reduce_line(lines)
-"   return join(split(a:lines[0], '\t\zs')[3:], '')
-" endfunction
-" 
-" 
-" function! fzf#vim#complete#line(...)
-"   let [display_bufnames, lines] = fzf#vim#_lines(0)
-"   let nth = display_bufnames ? 4 : 3
-"   return fzf#vim#complete(s:extend({
-"  \ 'prefix':  '^.*$',
-"  \ 'source':  lines,
-"  \ 'options': '--tiebreak=index --ansi --nth '.nth.'.. --tabstop=1',
-"  \ 'reducer': s:function('s:reduce_line')}, get(a:000, 0, fzf#wrap())))
-" endfunction
-" 
-" 
-
-" <plug>(fzf-complete-line)
-" imap <c-x><c-l> <plug>(fzf-complete-line)
-
-"  TODO: how to treat <expr> as input??
-" au FileType markdown,vimwiki inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': "ag '\(\(\(^\h*#+\)\\h+\[^#\]\)\|\(title:.*\)\|\(.*:\\H+:.*\)\|\(.*&&\\H+\\h.*\)\|\(.*!\\H+\\h.*\)\)' --md", 'options': ['--layout=default', '--info=inline'], 'prefix': mkdd#get_crusor_expression(), 'reducer': { lines ->  mkdd#references_reducer(lines[0])},}))
-
-" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': "ag '^#\{1,2} \|title:' --md", 'prefix': '^.*$', 'reducer': { lines ->  mkdd#references_reducer(lines[0])},}))
-
-
-" function to insert reference (similar to  zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#wiki_search'))
-" (1) provide right search pattern to  zettel#fzf#sink_onefile
-" (2) replace 'zettel#fzf#wiki_search' to output a full anchor and not file
-" name only
-" (3) done
-
-
-" function to open file at reference (similar to zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#search_open'))
-" (1) provide right search pattern to  zettel#fzf#sink_onefile
-" (2) done
-
-" ------------------------------------------------------------------------
