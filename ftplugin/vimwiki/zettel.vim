@@ -53,9 +53,10 @@ xnoremap <silent> <Plug>ZettelNewSelectedMap :call zettel#vimwiki#zettel_new_sel
 nnoremap <silent> <Plug>ZettelAnchorInsert :call zettel#fzf#anchor_reference('', 'zettel#fzf#anchor_insert', 0)<cr>
 nnoremap <silent> <Plug>ZettelAnchorOpen :call zettel#fzf#anchor_reference('', 'zettel#fzf#search_open', 0)<cr>
 
+" TODO kraxli: not properly working
 " Anchor completion in insert mode:
 " inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
-inoremap <expr> <c-r> zettel#fzf#anchor_complete()
+" inoremap <expr> <c-r> zettel#fzf#anchor_complete()
 
 if g:zettel_default_mappings==1
   " inoremap [[ [[<esc>:ZettelSearch<CR>
