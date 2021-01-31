@@ -34,7 +34,3 @@ command! -bang -nargs=* ZetO call zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#
 command! -bang -nargs=* ZetAo :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#search_open', <bang>0)
 command! -bang -nargs=* ZetAi :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#anchor_insert', <bang>0)
 
-" short cuts
-command! -bang -nargs=* ZetN call zettel#vimwiki#zettel_new(<q-args>)
-command! -bang -nargs=* ZetO call zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#search_open')
-
