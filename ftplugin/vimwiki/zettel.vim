@@ -27,9 +27,6 @@ function! s:replace_file_with_link()
 endfunction
 
 
-
-
-
 " make fulltext search in all VimWiki files using FZF and insert link to the
 " found file
 " command! -bang -nargs=* ZettelSearch call fzf#vim#ag(<q-args>,
