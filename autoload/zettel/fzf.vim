@@ -51,14 +51,15 @@ function! zettel#fzf#execute_fzf(a, b, options)
   if g:zettel_fzf_command == "ag"
     let search_ext = "--" . substitute(vimwiki#vars#get_wikilocal('ext'), '\.', '', '')
     let query =  empty(a:a) ? '^(?=.)' : a:a
-    let l:fzf_command = g:zettel_fzf_command . ' --color --smart-case --nogroup --column ' . shellescape(query)  " --ignore-case --smart-case
+    let options_ag =  empty(a:b) ? '' : a:b
+    let l:fzf_command = g:zettel_fzf_command . ' ' . search_ext . ' ' . options_ag . ' --color --smart-case --nogroup --column ' . shellescape(query)   " --ignore-case --smart-case
   else
     " use grep method for other commands
     let search_ext = "*" . vimwiki#vars#get_wikilocal('ext')
-    let l:fzf_command = g:zettel_fzf_command . " " . shellescape(a:a)
+    let l:fzf_command = g:zettel_fzf_command . " " . shellescape(a:a) . ' ' . search_ext
   endif
 
-  return fzf#vim#grep(l:fzf_command . ' ' . search_ext, 1, fzf#vim#with_preview(a:options), l:fullscreen)
+  return fzf#vim#grep(l:fzf_command, 1, fzf#vim#with_preview(a:options), l:fullscreen)
 endfunction
 
 
@@ -119,21 +120,22 @@ function! zettel#fzf#sink_onefile(params, sink_function,...)
   " get optional argument that should contain additional options for the fzf
   " preview window
   let additional_options = get(a:, 1, {})
-  call zettel#fzf#execute_fzf(a:params, 
+  call zettel#fzf#execute_fzf(a:params,
       \'--skip-vcs-ignores', fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)))
 endfunction
+
 
 " open wiki page using FZF search
 function! zettel#fzf#execute_open(params)
   call zettel#fzf#sink_onefile(a:params, 'zettel#fzf#search_open')
 endfunction
 
-" return list of unique wiki pages selected in FZF 
+" return list of unique wiki pages selected in FZF
 function! zettel#fzf#get_files(lines)
   " remove duplicate lines
-  let new_list = [] 
+  let new_list = []
   for line in a:lines
-    if line !="" 
+    if line !=""
       let new_list = add(new_list, s:get_fzf_filename(line))
     endif
   endfor
@@ -197,6 +199,132 @@ function! zettel#fzf#insert_note(lines)
   echom("Executing :" .command_to_execute)
   let result = systemlist(command_to_execute, lines_to_convert)
   call append(line("."), result)
-  " Todo: move this to execute_open 
   call setqflist(map(zettel#fzf#get_files(a:lines), '{ "filename": v:val }'))
 endfunction
+
+
+" ------------------------------------------------------------------------
+" TODO kraxli:
+function! zettel#fzf#anchor_query(search_string)
+
+  " specific default search-patters for tags and headers & titles
+  let l:tag_pattern_base = '\.'  " '\\H\{2,\}'
+  let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]'
+  let l:newline = '\(\?\|\^\|\\h\+\)'
+  let l:newline_or_space = '\[\\h\\n\\r\]\+'
+
+  let l:string2search = empty(a:search_string) ?  l:tag_pattern_base : get(a:, 'search_string',  l:tag_pattern_base)
+  let l:string2search4tag = empty(a:search_string) ?  l:tag_pattern_base_tag : get(a:, 'search_string',  l:tag_pattern_base_tag)
+  let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
+
+  " TODO kraxli: markdown tags
+  " let l:query_mkd_tag = l:newline_or_space . '\#\[^\#\]\+\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
+
+  let l:pat_http = '\(http\)\(s\?\)'
+  " should I just parse the .vimwiki_tags file for tags: 'ag --hidden  -G \(.vimwiki_tags$\) pattern'
+  let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)'
+
+  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search
+  " '\.\*'  " \(\?\<\=#\)
+  let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^\\n\\h\\r\]\*' . l:string2search . '\.\*'
+
+  " TODO kraxli: anker for bold text
+  " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
+  " let l:query_bold = '**\\K\[^\\h\\n\\r\]\*'. l:string2search  .'\\H\*\(\?\=**\)'
+
+  let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header
+  return l:query
+endfunction
+
+" helper function to create silversearcher (ag) command for anchors
+function! zettel#fzf#command_anchor(query)
+
+  if !executable('ag') || vimwiki#vars#get_wikilocal('syntax') != 'markdown'
+    echomsg('function zettel#fzf#anchor_reference() works on markdown files only and requires silver-searcher (ag)')
+    return
+  endif
+
+  let l:options_ag = '--md --color --ignore-case  --column ' " --ignore-case --smart-case --no-group
+
+  let l:query = zettel#fzf#anchor_query(a:query)
+  return 'ag ' . l:options_ag . l:query
+endfunction
+
+" helper function to open FZF preview window with anchors
+function! zettel#fzf#anchor_reference(query, sink_function, bang)
+
+  " let additional_options = get(a:, 1, {})
+  let additional_options = {}
+
+  let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
+  let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
+  " , "--preview='bat --color=always --style=header,grid --line-range :300
+  let l:cmd = zettel#fzf#command_anchor(a:query)
+
+  " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(l:specs), l:fullscreen)
+  return fzf#vim#grep(l:cmd, 1, fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)), l:fullscreen)
+
+endfunction
+
+
+function! zettel#fzf#anchor_reducer(line)
+    let pattern2disp = a:line
+    " let file_ext = vimwiki#vars#get_wikilocal('ext')
+    let file_name = s:get_fzf_filename(a:line)
+
+    let l:line_red = substitute(pattern2disp, file_name . ':\d\+:\d\+:', '', '')
+    let g:line_red = l:line_red
+
+    " headers
+    let pattern2disp = substitute(l:line_red, '\s*#\+\s\+', '#', '')
+    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
+    " title
+    let pattern2disp = substitute(l:line_red, '^title:.*', '', '')
+    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
+    " tags
+    let pattern2disp = <SID>tag_reducer(l:line_red)
+    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
+
+    " TODO add bold anchors
+
+    " TODO add filename to rest of anchor
+
+    return file_name
+endfunction
+
+
+function! s:tag_reducer(pattern)
+    let pattern2disp = a:pattern
+
+    " vimwiki tags
+    let pattern2disp = substitute(pattern2disp, '.*:\(\S\+\):.*', '#\1', '')
+
+    " other tags
+    let pattern2disp = substitute(pattern2disp, '.*#\(\S\+\).*', '#\1', '')
+    " let pattern2disp = substitute(pattern2disp, '.*&&\(\S\+\).*', '#\1', '')
+    " let pattern2disp = substitute(pattern2disp, '.*!\(\S\+\).*', '#\1', '')
+
+    return pattern2disp
+endfunction
+
+
+function! zettel#fzf#anchor_complete()
+  let pattern = ''
+  return fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(pattern), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
+endfunction
+
+
+" insert link for the searched zettel in the current note
+function! zettel#fzf#anchor_insert(line,...)
+  let file_ext = vimwiki#vars#get_wikilocal('ext')
+  let anchor = zettel#fzf#anchor_reducer(a:line)
+  let title = substitute(anchor, file_ext, '', '')
+  let link = zettel#vimwiki#format_file_title("[%title](%link)", anchor, title)
+  let line = getline('.')
+  " replace the [[ with selected link and title
+  let caret = col('.')
+  call setline('.', strpart(line, 0, caret - 2) . link .  strpart(line, caret))
+  call cursor(line('.'), caret + len(link) - 2)
+  call feedkeys("a", "n")
+endfunction
+
