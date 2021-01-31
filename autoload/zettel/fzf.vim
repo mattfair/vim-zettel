@@ -246,32 +246,35 @@ function! zettel#fzf#anchor_query(search_string)
 endfunction
 
 
-" helper function to open FZF preview window and ....
-function! zettel#fzf#anchor_reference(query, sink_function, bang)
-
-  " call zettel#fzf#anchor_reference('vim', 'zettel#fzf#search_open', <bang>0)
+function! zettel#fzf#command_anchor(query)  " call zettel#fzf#anchor_reference('vim', 'zettel#fzf#search_open', <bang>0)
 
   if !executable('ag') || vimwiki#vars#get_wikilocal('syntax') != 'markdown'
     echomsg('function zettel#fzf#anchor_reference() works on markdown files only and requires silver-searcher (ag)')
     return
   endif
 
+  let l:options_ag = '--md --color --ignore-case  --column ' " --ignore-case --smart-case --no-group
+
+  let l:query = zettel#fzf#anchor_query(a:query)
+  return 'ag ' . l:options_ag . l:query
+endfunction
+
+" helper function to open FZF preview window and ....
+function! zettel#fzf#anchor_reference(query, sink_function, bang)
+
   " let additional_options = get(a:, 1, {})
   let additional_options = {}
 
-  let l:query = zettel#fzf#anchor_query(a:query)
-  " echomsg(l:query)
-
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
-  let l:options_ag = '--md --color --ignore-case ' " --ignore-case --smart-case --no-group
   " https://sourcegraph.com/github.com/junegunn/fzf/-/blob/README-VIM.md
   let l:specs = {'sink':  function('zettel#fzf#search_open'), 'options': ['--layout=reverse', '--info=inline'], 'window': { 'width': 0.9, 'height': 0.6 }}
   " , "--preview='bat --color=always --style=header,grid --line-range :300
   " {}'""
+  let l:cmd = zettel#fzf#command_anchor(a:query)
 
   " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(l:specs), l:fullscreen)
   " return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(), l:fullscreen)
-  return fzf#vim#grep('ag ' . l:options_ag . l:query, 1, fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)), l:fullscreen)
+  return fzf#vim#grep(l:cmd, 1, fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)), l:fullscreen)
 
   " return zettel#fzf#execute_fzf(l:query,
   "  \'--skip-vcs-ignores', fzf#vim#with_preview(zettel#fzf#preview_options(a:sink_function, additional_options)))
@@ -280,27 +283,36 @@ endfunction
 
 function! zettel#fzf#anchor_reducer(line)
     let pattern2disp = a:line
-    let file_ext = vimwiki#vars#get_wikilocal('ext')
     " CHECK: needs to include the dot: e.g. '.md'
+    let file_ext = vimwiki#vars#get_wikilocal('ext')
+    let file_name = s:get_fzf_filename(a:line)
+    " TODO get file name (with extendsion) (path?)
 
     " TODO: search for headers, tags, titles and replace accordingly
-    let pattern2disp = substitute(substitute(pattern2disp, file_ext . ':\d\+:', '', ''), ' ', '', '')
+    echomsg(pattern2disp)
+    echomsg(file_name)
+    let pattern2disp = substitute(substitute(pattern2disp, file_name . ':\d\+:', '', ''), ' ', '', '')
+    echomsg(pattern2disp)
 
     " headers
-    let pattern2disp = substitute(pattern2disp, '#\+', '#', '')
+    let pattern2disp = substitute(pattern2disp, '#\+\h\+', '#', '')
     " title
     let pattern2disp = substitute(pattern2disp, 'title:.*', '', '')
     " tags
     let pattern2disp = <SID>tag_reducer(pattern2disp)
-    " bold
-    " TODO
 
-    return pattern2disp
+    " TODO add bold anchors
+
+    " TODO add filename to rest of anchor
+
+
+    return file_name . pattern2disp
 endfunction
 
 
-function! s:tag_reducer(line)
-    let pattern2disp = a:line
+function! s:tag_reducer(pattern)
+    let pattern2disp = a:pattern
+    echomsg(pattern2disp)
 
     " vimwiki tags
     let pattern2disp = substitute(pattern2disp, '.*:\(\S\+\):.*', '#\1', '')
@@ -314,7 +326,16 @@ function! s:tag_reducer(line)
 endfunction
 
 
+"  inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor('')})) " -> works
+" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}})) " -> works
+
+"  inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}})) " -> does someting
+
+
 " inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': ['a', 'b']})) " -> works
+" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': function(zettel#fzf#command_anchor)}))
+" inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(<expr>))}))
+
 
 " function('zettel#fzf#anchor_reference' , 'query, sink_function, bang')
 
