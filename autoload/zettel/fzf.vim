@@ -229,7 +229,6 @@ function! zettel#fzf#anchor_query(search_string)
   " - possibly just parse the .vimwiki_tags file: ag --hidden  -G \(.vimwiki_tags$\) test
   " - multi-match flag/mode: /g
   let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)' " -> (best?)
-  " let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\(\?\|\[^\\h\\n\\r\]\+\|\\H\*\)'. l:string2search .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\)' " -> ok
   " '\\H\*\(\?\=:\)'  "\(\?\<\=:\)\\K
 
   let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search  " . '\[^\\n\\r\]\*'
@@ -289,30 +288,30 @@ function! zettel#fzf#anchor_reducer(line)
     " TODO get file name (with extendsion) (path?)
 
     " TODO: search for headers, tags, titles and replace accordingly
-    echomsg(pattern2disp)
-    echomsg(file_name)
-    let pattern2disp = substitute(substitute(pattern2disp, file_name . ':\d\+:', '', ''), ' ', '', '')
-    echomsg(pattern2disp)
+    " let l:line_red = substitute(substitute(pattern2disp, file_name . ':\d\+:\d\+:', '', ''), ' ', '', '')
+    let l:line_red = substitute(pattern2disp, file_name . ':\d\+:\d\+:', '', '')
+    let g:line_red = l:line_red
 
     " headers
-    let pattern2disp = substitute(pattern2disp, '#\+\h\+', '#', '')
+    let pattern2disp = substitute(l:line_red, '\s*#\+\s\+', '#', '')
+    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
     " title
-    let pattern2disp = substitute(pattern2disp, 'title:.*', '', '')
+    let pattern2disp = substitute(l:line_red, '^title:.*', '', '')
+    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
     " tags
-    let pattern2disp = <SID>tag_reducer(pattern2disp)
+    let pattern2disp = <SID>tag_reducer(l:line_red)
+    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
 
     " TODO add bold anchors
 
     " TODO add filename to rest of anchor
 
-
-    return file_name . pattern2disp
+    return file_name
 endfunction
 
 
 function! s:tag_reducer(pattern)
     let pattern2disp = a:pattern
-    echomsg(pattern2disp)
 
     " vimwiki tags
     let pattern2disp = substitute(pattern2disp, '.*:\(\S\+\):.*', '#\1', '')
@@ -330,6 +329,22 @@ function! zettel#fzf#anchor_complete()
   let pattern = ''
   return fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(pattern), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
 endfunction
+
+
+" insert link for the searched zettel in the current note
+function! zettel#fzf#anchor_insert(line,...)
+  let file_ext = vimwiki#vars#get_wikilocal('ext')
+  let anchor = zettel#fzf#anchor_reducer(a:line)
+  let title = substitute(anchor, file_ext, '', '')
+  let link = zettel#vimwiki#format_file_title("[%title](%link)", anchor, title)
+  let line = getline('.')
+  " replace the [[ with selected link and title
+  let caret = col('.')
+  call setline('.', strpart(line, 0, caret - 2) . link .  strpart(line, caret))
+  call cursor(line('.'), caret + len(link) - 2)
+  call feedkeys("a", "n")
+endfunction
+
 
 "  inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor('')})) " -> works
 " inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}})) " -> works

@@ -25,10 +25,12 @@ command! -nargs=1 -bang ZettelSetActiveWiki call zettel#vimwiki#set_active_wiki(
 command! -bang -nargs=* ZettelOpen call zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#search_open')
 
 command! -bang -nargs=* ZettelNew call zettel#vimwiki#zettel_new(<q-args>)
-command! -bang -nargs=* ZettelAnchor :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#search_open', <bang>0)
+command! -bang -nargs=* ZettelAnchorOpen :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#search_open', <bang>0)
+command! -bang -nargs=* ZettelAnchorInsert :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#anchor_insert', <bang>0)
 
 " short cuts
 command! -bang -nargs=* ZetN call zettel#vimwiki#zettel_new(<q-args>)
 command! -bang -nargs=* ZetO call zettel#fzf#sink_onefile(<q-args>, 'zettel#fzf#search_open')
-command! -bang -nargs=* ZetA :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#search_open', <bang>0)
+command! -bang -nargs=* ZetAo :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#search_open', <bang>0)
+command! -bang -nargs=* ZetAi :call zettel#fzf#anchor_reference(<q-args>, 'zettel#fzf#anchor_insert', <bang>0)
 
