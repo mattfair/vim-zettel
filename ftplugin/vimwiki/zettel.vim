@@ -50,13 +50,16 @@ nnoremap <silent> <Plug>ZettelSearchMap :ZettelSearch<cr>
 nnoremap <silent> <Plug>ZettelYankNameMap :ZettelYankName<cr>
 nnoremap <silent> <Plug>ZettelReplaceFileWithLink :call <sid>replace_file_with_link()<cr>
 xnoremap <silent> <Plug>ZettelNewSelectedMap :call zettel#vimwiki#zettel_new_selected()<CR>
-nnoremap <silent> <Plug>ZettelAnchorInsert :call zettel#fzf#anchor_reference('', 'zettel#fzf#anchor_insert', 0)<cr>
-nnoremap <silent> <Plug>ZettelAnchorOpen :call zettel#fzf#anchor_reference('', 'zettel#fzf#search_open', 0)<cr>
+nnoremap <silent> <Plug>ZettelAnchorInsert :ZettelAnchorInsert<cr>
+nnoremap <silent> <Plug>ZettelAnchorOpen :ZettelAnchorOpen<cr>
 
 " TODO kraxli: not properly working
 " Anchor completion in insert mode:
 " inoremap <expr> <c-r> fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(''), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
 " inoremap <expr> <c-r> zettel#fzf#anchor_complete()
+
+" shortcuts
+command! -bang -nargs=* ZetS ZettelSearch <args>
 
 if g:zettel_default_mappings==1
   " inoremap [[ [[<esc>:ZettelSearch<CR>
