@@ -224,7 +224,7 @@ function! zettel#fzf#anchor_query(search_string)
   " should I just parse the .vimwiki_tags file for tags: 'ag --hidden  -G \(.vimwiki_tags$\) pattern'
   let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)'
 
-  let l:query_mkd_header = l:newline_or_space . '\#\\h\+\\K\[^\\n\\r\]\*' . l:string2search
+  let l:query_mkd_header = l:newline_or_space . '\#\+\\h\+\\K\[^\\n\\r\]\*' . l:string2search
   " '\.\*'  " \(\?\<\=#\)
   let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^\\n\\h\\r\]\*' . l:string2search . '\.\*'
 
