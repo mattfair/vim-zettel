@@ -78,7 +78,7 @@ function! zettel#fzf#wiki_search(line,...)
   let line = getline('.')
   " replace the [[ with selected link and title
   let caret = col('.')
-  call setline('.', strpart(line, 0, caret - 2) . link .  strpart(line, caret))
+  call setline('.', strpart(line, 0, caret) . link .  strpart(line, caret))
   call cursor(line('.'), caret + len(link) - 2)
   call feedkeys("a", "n")
 endfunction
@@ -323,7 +323,7 @@ function! zettel#fzf#anchor_insert(line,...)
   let line = getline('.')
   " replace the [[ with selected link and title
   let caret = col('.')
-  call setline('.', strpart(line, 0, caret - 2) . link .  strpart(line, caret))
+  call setline('.', strpart(line, 0, caret) . link .  strpart(line, caret))
   call cursor(line('.'), caret + len(link) - 2)
   call feedkeys("a", "n")
 endfunction
