@@ -211,21 +211,19 @@ endfunction
 function! zettel#fzf#anchor_query(search_string)
 
   " specific default search-patters for tags and headers & titles
-  let l:tag_pattern_base = '\.'  " '\\H\{2,\}'
-  let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]'
+  let l:pattern_base = '\.'  " '\\H\{2,\}'
+  " TODO kraxli: exclude literal [], () and {}, / \ e.g. \)\(
+  let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]\{2,\}'
   let l:newline = '\(\?\|\^\|\\h\+\)'
   let l:newline_or_space = '\[\\h\\n\\r\]\+'
+  let l:pat_http = '\(http\)\(s\?\)'
 
-  let l:string2search = empty(a:search_string) ?  l:tag_pattern_base : get(a:, 'search_string',  l:tag_pattern_base)
+  let l:string2search = empty(a:search_string) ?  l:pattern_base : get(a:, 'search_string',  l:pattern_base)
   let l:string2search4tag = empty(a:search_string) ?  l:tag_pattern_base_tag : get(a:, 'search_string',  l:tag_pattern_base_tag)
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
 
-  " TODO kraxli: markdown tags
-  " let l:query_mkd_tag = l:newline_or_space . '\#\[^\#\]\+\\K\[^\\h\\n\\r\]\*' . l:string2search . '\\H\*'  " \(\?\<\=#\)
-
-  let l:pat_http = '\(http\)\(s\?\)'
-  " should I just parse the .vimwiki_tags file for tags: 'ag --hidden  -G \(.vimwiki_tags$\) pattern'
   let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)'
+  let l:query_mkd_tag = '\[^\\H\\n\\r\]\+\#\\K\[^\\n\\h\\r\#\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=\[\\h\\n\\r\]\)'
 
   let l:query_mkd_header = l:newline_or_space . '\#\+\\h\+\\K\[^\\n\\r\]\*' . l:string2search
   " '\.\*'  " \(\?\<\=#\)
@@ -235,7 +233,7 @@ function! zettel#fzf#anchor_query(search_string)
   " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
   " let l:query_bold = '**\\K\[^\\h\\n\\r\]\*'. l:string2search  .'\\H\*\(\?\=**\)'
 
-  let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header
+  let l:query = l:query_vimwiki_tag . '\|' . l:query_mkd_title  . '\|'. l:query_mkd_header . '\|' . l:query_mkd_tag
   return l:query
 endfunction
 
@@ -303,7 +301,7 @@ function! s:tag_reducer(pattern)
     let pattern2disp = substitute(pattern2disp, '.*:\(\S\+\):.*', '#\1', '')
 
     " other tags
-    let pattern2disp = substitute(pattern2disp, '.*#\(\S\+\).*', '#\1', '')
+    " let pattern2disp = substitute(pattern2disp, '.*#\(\S\+\).*', '#\1', '')
     " let pattern2disp = substitute(pattern2disp, '.*&&\(\S\+\).*', '#\1', '')
     " let pattern2disp = substitute(pattern2disp, '.*!\(\S\+\).*', '#\1', '')
 
