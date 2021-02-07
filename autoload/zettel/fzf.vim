@@ -41,6 +41,15 @@ function! s:get_wiki_file(filename)
    return join(fileparts[0:-2],".")
 endfunction
 
+function! s:paste_link(link, cursor_pos)
+  let line = getline('.')
+  " replace the [[ with selected link and title
+  let caret = col('.')
+  call setline('.', strpart(line, 0, caret) . a:link .  strpart(line, caret))
+  call cursor(line('.'), caret + len(a:link) - a:cursor_pos)
+  call feedkeys("a", "n")
+endfunction
+
 
 " execute fzf function
 function! zettel#fzf#execute_fzf(a, b, options)
@@ -75,14 +84,8 @@ function! zettel#fzf#wiki_search(line,...)
     let title = wikiname
   end
   let link = zettel#vimwiki#format_search_link(wikiname, title)
-  let line = getline('.')
-  " replace the [[ with selected link and title
-  let caret = col('.')
-  call setline('.', strpart(line, 0, caret) . link .  strpart(line, caret))
-  call cursor(line('.'), caret + len(link) - 2)
-  call feedkeys("a", "n")
+  call <SID>paste_link(link, 2)
 endfunction
-
 
 " search for a note and the open it in Vimwiki
 function! zettel#fzf#search_open(line,...)
@@ -320,11 +323,6 @@ function! zettel#fzf#anchor_insert(line,...)
   let anchor = zettel#fzf#anchor_reducer(a:line)
   let title = substitute(anchor, file_ext, '', '')
   let link = zettel#vimwiki#format_file_title("[%title](%link)", anchor, title)
-  let line = getline('.')
-  " replace the [[ with selected link and title
-  let caret = col('.')
-  call setline('.', strpart(line, 0, caret) . link .  strpart(line, caret))
-  call cursor(line('.'), caret + len(link) - 2)
-  call feedkeys("a", "n")
+  call <SID>paste_link(link, 0)
 endfunction
 
