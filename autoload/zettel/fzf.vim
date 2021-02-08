@@ -211,23 +211,24 @@ endfunction
 function! zettel#fzf#anchor_query(search_string)
 
   " specific default search-patters for tags and headers & titles
-  let l:pattern_base = '\.'  " '\\H\{2,\}'
-  " TODO kraxli: exclude literal [], () and {}, / \ e.g. \)\(
-  let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]\{2,\}'
+  let l:pattern_base = ''  " '\.' or  '\\H\{2,\}'
+  " let l:tag_pattern_base_tag = '\[^\\h\\n\\r\]\{2,\}'   " '\[^\D\W\\n\\r\:\]\{2,\}'
+  let l:tag_pattern_base_tag = l:pattern_base
   let l:newline = '\(\?\|\^\|\\h\+\)'
-  let l:newline_or_space = '\[\\h\\n\\r\]\+'
+  let l:newline_or_space = '\\h\\n\\r\\Z'
+  let l:pat_special_chars = '\[\]\\/\(\)'
   let l:pat_http = '\(http\)\(s\?\)'
 
   let l:string2search = empty(a:search_string) ?  l:pattern_base : get(a:, 'search_string',  l:pattern_base)
   let l:string2search4tag = empty(a:search_string) ?  l:tag_pattern_base_tag : get(a:, 'search_string',  l:tag_pattern_base_tag)
   let l:fullscreen = get(a:, 'bang', 0) " get(a:, 2, 0)
 
-  let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^\\n\\h\\r\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=:\[\\h\\n\\r\]\)'
-  let l:query_mkd_tag = '\[^\\H\\n\\r\]\+\#\\K\[^\\n\\h\\r\#\]\*'. l:string2search4tag .  '\[^\\h\\n\\r\\Z\]\*\(\?\=\[\\h\\n\\r\]\)'
+  let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^' . l:newline_or_space . '\]\*'. l:string2search4tag .  '\[^' . l:newline_or_space . '\]\*\(\?\=:\)'  " (\?\=:\[' . l:newline_or_space . '\]\)'
+  let l:query_mkd_tag = '\[^\\H\\n\\r\]\+\#\\K\[^' . l:newline_or_space . l:pat_special_chars . '\#\]\*'. l:string2search4tag .  '\[^' . l:newline_or_space . '\]\*\(\?\=\[' . l:newline_or_space . '\]\)'
 
-  let l:query_mkd_header = l:newline_or_space . '\#\+\\h\+\\K\[^\\n\\r\]\*' . l:string2search
+  let l:query_mkd_header = '\[' . l:newline_or_space . '\]\+' . '\#\+\\h\+\\K\[^\\n\\r\]\*' . l:string2search
   " '\.\*'  " \(\?\<\=#\)
-  let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^\\n\\h\\r\]\*' . l:string2search . '\.\*'
+  let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^'. l:newline_or_space . '\]\*' . l:string2search . '\.\*'
 
   " TODO kraxli: anker for bold text
   " let l:query_bold = l:newline_or_space . '**\[^\\h\\n\\r\]\*'. l:string2search . '\\H\*\(\?\=**\)'
