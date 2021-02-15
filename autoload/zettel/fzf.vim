@@ -226,7 +226,7 @@ function! zettel#fzf#anchor_query(search_string)
   let l:query_vimwiki_tag = '\(\?\|\[^'. l:pat_http . '\]\|\[^\\H\\n\\r\]\):\\K\[^' . l:newline_or_space . '\]\*'. l:string2search4tag .  '\[^' . l:newline_or_space . '\]\*\(\?\=:\)'  " (\?\=:\[' . l:newline_or_space . '\]\)'
   let l:query_mkd_tag = '\[^\\H\\n\\r\]\+\#\\K\[^' . l:newline_or_space . l:pat_special_chars . '\#\]\*'. l:string2search4tag .  '\[^' . l:newline_or_space . '\]\*\(\?\=\[' . l:newline_or_space . '\]\)'
 
-  let l:query_mkd_header = '\[' . l:newline_or_space . '\]\+' . '\#\+\\h\+\\K\[^\\n\\r\]\*' . l:string2search
+  let l:query_mkd_header = '\[\\n\\r\]\[\\h\]\*' . '\#\+\\h\+\\K\[^\\n\\r\]\*' . l:string2search
   " '\.\*'  " \(\?\<\=#\)
   let l:query_mkd_title = l:newline . '^title:\\h\+\\K\[^'. l:newline_or_space . '\]\*' . l:string2search . '\.\*'
 
