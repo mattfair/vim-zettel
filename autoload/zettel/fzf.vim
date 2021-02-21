@@ -268,31 +268,109 @@ function! zettel#fzf#anchor_reference(query, sink_function, bang)
 
 endfunction
 
+function! s:create_anchor(line, file_name)
+  let l:line_red = substitute(a:line, a:file_name . ':\d\+:\d\+:', '', '')
+  let g:line_red = l:line_red  " TODO why do I use this??
+
+  " headers
+  let pattern2disp = substitute(l:line_red, '\s*#\+\s\+', '#', '')
+  if pattern2disp != l:line_red | return pattern2disp | endif
+  " title
+  let pattern2disp = substitute(l:line_red, '^title:.*', '', '')
+  if pattern2disp != l:line_red | return pattern2disp | endif
+  " tags
+  let pattern2disp = <SID>tag_reducer(l:line_red)
+  if pattern2disp != l:line_red | return pattern2disp | endif
+
+  " TODO add bold anchors
+
+  " TODO add filename to rest of anchor
+
+  return ''
+endfunction
 
 function! zettel#fzf#anchor_reducer(line)
-    let pattern2disp = a:line
-    " let file_ext = vimwiki#vars#get_wikilocal('ext')
-    let file_name = s:get_fzf_filename(a:line)
-
-    let l:line_red = substitute(pattern2disp, file_name . ':\d\+:\d\+:', '', '')
-    let g:line_red = l:line_red
-
-    " headers
-    let pattern2disp = substitute(l:line_red, '\s*#\+\s\+', '#', '')
-    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
-    " title
-    let pattern2disp = substitute(l:line_red, '^title:.*', '', '')
-    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
-    " tags
-    let pattern2disp = <SID>tag_reducer(l:line_red)
-    if pattern2disp != l:line_red | return file_name . pattern2disp | endif
-
-    " TODO add bold anchors
-
-    " TODO add filename to rest of anchor
-
-    return file_name
+  let file_name = s:get_fzf_filename(a:line)
+  let anchor = <sid>create_anchor(a:line, file_name)
+  return file_name . anchor
 endfunction
+
+
+" insert link for the searched zettel in the current note
+function! zettel#fzf#anchor_insert(line,...)
+  let line_nr = split(a:line, ':')[1]
+  let file_name = s:get_fzf_filename(a:line)
+  let anchor = <sid>create_anchor(a:line, file_name)
+  let file_ext = vimwiki#vars#get_wikilocal('ext')  " remove
+
+  " -- reduced form of links
+  " let link = zettel#fzf#anchor_reducer(a:line)
+  " -- full links
+  let link =  <sid>create_link(anchor, line_nr, file_name)
+  let title = substitute(file_name, file_ext, '', '')  . anchor
+  let link_titled = zettel#vimwiki#format_file_title("[%title](%link)", link, title)
+  call <SID>paste_link(link_titled, 0)
+endfunction
+
+
+" TODO kraxli:
+" create full links e.g. filename#header1#header2#tag
+function! s:create_link(anchor, line_nr, filename) abort
+
+  let rx_h = vimwiki#vars#get_syntaxlocal('rxH')
+  let rx_header = vimwiki#vars#get_syntaxlocal('header_search')
+  let rx_code = vimwiki#vars#get_syntaxlocal('char_code')
+
+  " let PROXIMITY_LINES_NR = 2
+  " let header_line_nr = - (2 * PROXIMITY_LINES_NR)
+  let is_code_block = 0
+
+  let link = a:anchor
+  let line_nr = a:line_nr - 1
+  let file = readfile(a:filename)[0:line_nr]
+  let header_level_prev =  <sid>get_header_level(file[line_nr], rx_h)
+
+  while line_nr > 1
+    let line_nr -= 1
+    let line = file[line_nr]
+
+    " ignore code blocks
+    let is_code_boarder = match(line, rx_code . '\{3,}', '') >= 0
+    if is_code_boarder | let is_code_block = !is_code_block | endif
+    if is_code_block | continue | endif
+
+    " process headers
+    if match(line, rx_header, 'g') < 0 | continue | endif
+    let header_level = <sid>get_header_level(line, rx_h)
+    if header_level == header_level_prev | continue | endif
+    let link = substitute(trim(line), rx_h . '\+\s\+', '#', '') . link  " '\s*#\+\s\+'
+    if header_level == 1 | break | endif
+    let header_level_prev = copy(header_level)
+  endwhile
+
+  return a:filename . link
+endfunction
+
+function s:get_header_level(line, rx_h)
+  let header_symbols = matchstr(a:line, '^\s*\(' . a:rx_h . '\{1,6}\)\s\+')
+  let header_level = count(header_symbols, a:rx_h)
+  return header_level
+endfunction
+
+" TODO kraxli: lua version
+" see https://awesomeopensource.com/project/nanotee/nvim-lua-guide
+" :lua print('small lua snippet')
+
+" lua << EOF
+" local mod = require('mymodule')
+" local tbl = {1, 2, 3}
+"
+" for k, v in ipairs(tbl) do
+"     mod.method(v)
+" end
+"
+" print(tbl)
+" EOF
 
 
 function! s:tag_reducer(pattern)
@@ -310,18 +388,11 @@ function! s:tag_reducer(pattern)
 endfunction
 
 
+" so far unused
 function! zettel#fzf#anchor_complete()
   let pattern = ''
   return fzf#vim#complete(fzf#wrap({'source': zettel#fzf#command_anchor(pattern), 'reducer': { lines ->  zettel#fzf#anchor_reducer(lines[0])}}))
 endfunction
 
 
-" insert link for the searched zettel in the current note
-function! zettel#fzf#anchor_insert(line,...)
-  let file_ext = vimwiki#vars#get_wikilocal('ext')
-  let anchor = zettel#fzf#anchor_reducer(a:line)
-  let title = substitute(anchor, file_ext, '', '')
-  let link = zettel#vimwiki#format_file_title("[%title](%link)", anchor, title)
-  call <SID>paste_link(link, 0)
-endfunction
-
+"vim: set foldmethod=indent
