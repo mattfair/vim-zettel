@@ -361,6 +361,7 @@ endfunction
 " see https://awesomeopensource.com/project/nanotee/nvim-lua-guide
 " :lua print('small lua snippet')
 
+" let s:has_lua = has('lua') || has('nvim-0.2.2')
 " lua << EOF
 " local mod = require('mymodule')
 " local tbl = {1, 2, 3}
